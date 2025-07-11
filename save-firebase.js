@@ -2,9 +2,9 @@ require('dotenv').config();
 const admin = require("firebase-admin");
 const { getFirestore } = require("firebase-admin/firestore");
 
-// Inicializar Firebase Admin si no está ya inicializado
+// Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
-  // Construir credenciales desde variables de entorno
+  // Build credentials from environment variables
   const serviceAccount = {
     type: process.env.FIREBASE_TYPE,
     project_id: process.env.FIREBASE_PROJECT_ID,
@@ -24,7 +24,7 @@ if (!admin.apps.length) {
     projectId: process.env.FIREBASE_PROJECT_ID
   });
   
-  console.log('🔥 Firebase inicializado con credenciales desde variables de entorno');
+  console.log('🔥 Firebase initialized with credentials from environment variables');
 }
 
 const db = getFirestore();
@@ -36,28 +36,28 @@ async function saveToFirebase(fondosData) {
   try {
     const priceUnitsRef = db.collection("priceUnits");
     const fundsRef = db.collection("funds");
-    console.log("🔥 Guardando datos en Firebase...");
+    console.log("🔥 Saving data to Firebase...");
 
     if (!Array.isArray(fondosData) || fondosData.length === 0) {
-      console.log("⚠️  No hay datos de fondos para guardar");
+      console.log("⚠️  No fund data to save");
       return;
     }
 
     let savedCount = 0;
     let errorCount = 0;
 
-    // Procesar cada fondo
+    // Process each fund
     for (const fondo of fondosData) {
       try {
         const { idFund, date, price } = fondo;
         
         if (!idFund || !date || price === undefined) {
-          console.log(`⚠️  Datos incompletos para fondo:`, fondo);
+          console.log(`⚠️  Incomplete data for fund:`, fondo);
           errorCount++;
           continue;
         }
 
-        // 1. Guardar en priceUnits histórico (como antes)
+        // 1. Save to priceUnits historical (as before)
         const historicalRef = priceUnitsRef
           .doc(idFund)
           .collection("historical")
@@ -69,31 +69,31 @@ async function saveToFirebase(fondosData) {
         };
 
         await historicalRef.set(historicalData, { merge: true });
-        console.log(`✅ Histórico guardado: priceUnits/${idFund}/historical/${date} - Precio: ${price}`);
+        console.log(`✅ Historical saved: priceUnits/${idFund}/historical/${date} - Price: ${price}`);
 
-        // 2. Actualizar campo "unit" en la colección funds
+        // 2. Update "unit" field in funds collection
         const fundRef = fundsRef.doc(idFund);
         
         await fundRef.update({
           unit: price
         });
         
-        console.log(`✅ Fondo actualizado: funds/${idFund} - unit: ${price}`);
+        console.log(`✅ Fund updated: funds/${idFund} - unit: ${price}`);
         savedCount++;
 
       } catch (error) {
-        console.error(`❌ Error al guardar fondo ${fondo.idFund}:`, error.message);
+        console.error(`❌ Error saving fund ${fondo.idFund}:`, error.message);
         errorCount++;
       }
     }
 
-    console.log(`\n📊 Resumen de guardado:`);
-    console.log(`   ✅ Fondos guardados exitosamente: ${savedCount}`);
-    console.log(`   ❌ Errores: ${errorCount}`);
-    console.log(`   📈 Total procesados: ${fondosData.length}`);
+    console.log(`\n📊 Save summary:`);
+    console.log(`   ✅ Funds saved successfully: ${savedCount}`);
+    console.log(`   ❌ Errors: ${errorCount}`);
+    console.log(`   📈 Total processed: ${fondosData.length}`);
     
     if (savedCount > 0) {
-      console.log("🔥 Datos guardados exitosamente en Firebase");
+      console.log("🔥 Data saved successfully to Firebase");
     }
 
     return {
@@ -104,7 +104,7 @@ async function saveToFirebase(fondosData) {
     };
 
   } catch (error) {
-    console.error("❌ Error general al guardar en Firebase:", error);
+    console.error("❌ General error saving to Firebase:", error);
     throw error;
   }
 }

@@ -3,7 +3,7 @@ const { google } = require('googleapis');
 const OpenAIProcessor = require('./openai-processor');
 const { saveToFirebase } = require('./save-firebase');
 
-// Configuración de autenticación de Gmail
+// Gmail authentication configuration
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 
 class GmailProcessor {
@@ -13,10 +13,10 @@ class GmailProcessor {
     this.openaiProcessor = new OpenAIProcessor();
   }
 
-  // Configurar autenticación OAuth2
+  // Configure OAuth2 authentication
   async authenticate() {
     try {
-      // Verificar que las variables de entorno requeridas estén configuradas
+      // Verify that required environment variables are configured
       const requiredEnvVars = [
         'GOOGLE_CLIENT_ID',
         'GOOGLE_CLIENT_SECRET', 
@@ -27,21 +27,21 @@ class GmailProcessor {
 
       for (const envVar of requiredEnvVars) {
         if (!process.env[envVar]) {
-          throw new Error(`Variable de entorno requerida no encontrada: ${envVar}`);
+          throw new Error(`Required environment variable not found: ${envVar}`);
         }
       }
 
-      // Configurar OAuth2 con variables de entorno
+      // Configure OAuth2 with environment variables
       this.auth = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
         process.env.GOOGLE_REDIRECT_URI
       );
 
-      // Limpiar y configurar credenciales del token desde variables de entorno
+      // Clean and configure token credentials from environment variables
       const cleanValue = (value) => {
         if (!value) return value;
-        // Remover comillas dobles, simples y comas al final
+        // Remove double quotes, single quotes and trailing commas
         return value.replace(/^["']|["'],?$/g, '').trim();
       };
 
@@ -52,7 +52,7 @@ class GmailProcessor {
         token_type: cleanValue(process.env.TOKEN_TYPE_KEY)
       };
 
-      // Agregar expiry_date si está disponible
+      // Add expiry_date if available
       if (process.env.EXPIRY_DATE_KEY) {
         tokenCredentials.expiry_date = parseInt(process.env.EXPIRY_DATE_KEY);
       }
@@ -60,14 +60,14 @@ class GmailProcessor {
       this.auth.setCredentials(tokenCredentials);
 
       this.gmail = google.gmail({ version: 'v1', auth: this.auth });
-      console.log('✅ Autenticación exitosa con Gmail API usando variables de entorno');
+      console.log('✅ Successful authentication with Gmail API using environment variables');
     } catch (error) {
-      console.error('❌ Error en autenticación:', error.message);
+      console.error('❌ Authentication error:', error.message);
       throw error;
     }
   }
 
-  // Obtener fecha de hoy en formato YYYY/MM/DD
+  // Get today's date in YYYY/MM/DD format
   getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
@@ -76,17 +76,17 @@ class GmailProcessor {
     return `${year}/${month}/${day}`;
   }
 
-  // Buscar emails del día de hoy del remitente específico
+  // Search for today's emails from specific sender
   async searchTodayEmails(senderEmail = 'extractos@accivalores.com') {
     try {
       const todayDate = this.getTodayDate();
       const requiredSubject = 'Valor diario de la unidad y rentabilidad fondos';
       
-      // Consulta para buscar emails de hoy del remitente específico con asunto específico
+      // Query to search for today's emails from specific sender with specific subject
       const query = `from:${senderEmail} after:${todayDate} has:attachment filename:pdf subject:"${requiredSubject}"`;
       
-      console.log(`🔍 Buscando emails de hoy (${todayDate}) de ${senderEmail} con archivos PDF...`);
-      console.log(`📋 Asunto requerido: "${requiredSubject}"`);
+      console.log(`🔍 Searching for today's emails (${todayDate}) from ${senderEmail} with PDF files...`);
+      console.log(`📋 Required subject: "${requiredSubject}"`);
       
       const response = await this.gmail.users.messages.list({
         userId: 'me',
@@ -94,19 +94,19 @@ class GmailProcessor {
       });
 
       const messages = response.data.messages || [];
-      console.log(`📧 Se encontraron ${messages.length} email(s) que coinciden con los criterios`);
+      console.log(`📧 Found ${messages.length} email(s) matching the criteria`);
       
       return messages;
     } catch (error) {
-      console.error('❌ Error al buscar emails:', error.message);
+      console.error('❌ Error searching emails:', error.message);
       throw error;
     }
   }
 
-  // Obtener detalles del mensaje y procesar PDFs en memoria
+  // Get message details and process PDFs in memory
   async downloadPDFsFromMessage(messageId) {
     try {
-      console.log(`📥 Procesando mensaje ID: ${messageId}`);
+      console.log(`📥 Processing message ID: ${messageId}`);
       
       const message = await this.gmail.users.messages.get({
         userId: 'me',
@@ -118,7 +118,7 @@ class GmailProcessor {
       
       for (const part of parts) {
         if (part.filename && part.filename.toLowerCase().endsWith('.pdf')) {
-          console.log(`📎 Encontrado archivo PDF: ${part.filename}`);
+          console.log(`📎 Found PDF file: ${part.filename}`);
           
           const attachment = await this.gmail.users.messages.attachments.get({
             userId: 'me',
@@ -129,7 +129,7 @@ class GmailProcessor {
           const data = attachment.data.data;
           const buffer = Buffer.from(data, 'base64');
           
-          console.log(`📎 PDF procesado en memoria: ${part.filename}`);
+          console.log(`📎 PDF processed in memory: ${part.filename}`);
           
           attachments.push({
             filename: part.filename,
@@ -141,65 +141,65 @@ class GmailProcessor {
 
       return attachments;
     } catch (error) {
-      console.error('❌ Error al procesar PDF:', error.message);
+      console.error('❌ Error processing PDF:', error.message);
       throw error;
     }
   }
 
-  // Procesar PDF con IA usando OpenAI
+  // Process PDF with AI using OpenAI
   async processPDFWithAI(attachment) {
     try {
-      // Verificar si OpenAI está configurado
+      // Check if OpenAI is configured
       if (!process.env.OPENAI_API_KEY) {
-        console.log('⚠️  OpenAI no configurado. Para usar IA, configura OPENAI_API_KEY');
+        console.log('⚠️  OpenAI not configured. To use AI, configure OPENAI_API_KEY');
         
         return {
-          message: 'OpenAI no configurado - PDF procesado exitosamente',
+          message: 'OpenAI not configured - PDF processed successfully',
           skipped_ai: true
         };
       }
 
-      // Procesar con OpenAI
+      // Process with OpenAI
       const result = await this.openaiProcessor.processPDF(attachment);
       return result;
 
     } catch (error) {
-      console.error('❌ Error al procesar PDF con IA:', error.message);
+      console.error('❌ Error processing PDF with AI:', error.message);
       
       return {
-        message: 'Error en procesamiento con IA - PDF procesado exitosamente',
+        message: 'Error in AI processing - PDF processed successfully',
         error: error.message,
         skipped_ai: true
       };
     }
   }
 
-  // Función principal
+  // Main function
   async processDaily() {
     try {
-      console.log('🚀 Iniciando procesamiento diario de emails...');
+      console.log('🚀 Starting daily email processing...');
       
       await this.authenticate();
       
       const messages = await this.searchTodayEmails('extractos@accivalores.com');
       
       if (messages.length === 0) {
-        console.log('ℹ️  No se encontraron emails de hoy con PDFs del remitente especificado');
+        console.log('ℹ️  No emails found today with PDFs from the specified sender');
         return {
           success: false,
-          message: 'No se encontraron emails para procesar',
+          message: 'No emails found to process',
           emailsFound: 0
         };
       }
 
-      // Solo procesar el email más reciente (el primero de la lista)
+      // Only process the most recent email (first in the list)
       const mostRecentMessage = messages[0];
       
       if (messages.length > 1) {
-        console.log(`📬 Se encontraron ${messages.length} emails, pero solo se procesará el más reciente`);
+        console.log(`📬 Found ${messages.length} emails, but only the most recent will be processed`);
       }
 
-      console.log(`📨 Procesando el email más reciente...`);
+      console.log(`📨 Processing the most recent email...`);
 
       const allFondosData = [];
       
@@ -208,22 +208,22 @@ class GmailProcessor {
       for (const attachment of attachments) {
         const result = await this.processPDFWithAI(attachment);
         
-        // Si el procesamiento fue exitoso y tenemos datos de fondos
+        // If processing was successful and we have fund data
         if (result.success && result.fondos_extraidos && Array.isArray(result.fondos_extraidos)) {
           allFondosData.push(...result.fondos_extraidos);
         }
       }
 
-      // Guardar todos los datos en Firebase
+      // Save all data to Firebase
       let firebaseResult = { success: false };
       if (allFondosData.length > 0) {
-        console.log(`\n🔥 Guardando ${allFondosData.length} registros de fondos en Firebase...`);
+        console.log(`\n🔥 Saving ${allFondosData.length} fund records to Firebase...`);
         firebaseResult = await saveToFirebase(allFondosData);
       } else {
-        console.log('⚠️  No se encontraron datos de fondos para guardar en Firebase');
+        console.log('⚠️  No fund data found to save to Firebase');
       }
 
-      console.log('✅ Procesamiento completado exitosamente');
+      console.log('✅ Processing completed successfully');
       
       return {
         success: true,
@@ -233,7 +233,7 @@ class GmailProcessor {
       };
 
     } catch (error) {
-      console.error('❌ Error en el procesamiento:', error.message);
+      console.error('❌ Error in processing:', error.message);
       throw error;
     }
   }
