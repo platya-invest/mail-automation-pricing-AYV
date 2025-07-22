@@ -1,7 +1,7 @@
 const { runGmailProcessor } = require('./run-gmail-processor');
 
 /**
- * Cloud Function entry point
+ * Cloud Function entry point for Gen2
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
