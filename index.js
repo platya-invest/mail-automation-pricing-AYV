@@ -179,6 +179,36 @@ exports.main = async (req, res) => {
 			];
 		}
 
+		// Agregar diagnóstico de variables de entorno a la respuesta
+		const envDiagnosis = {
+			auth: {},
+			openai: {},
+			firebase: {},
+			other: {}
+		};
+
+		// Variables de autenticación
+		for (const envVar of authVars) {
+			const value = process.env[envVar];
+			envDiagnosis.auth[envVar] = value ? 'CONFIGURADA' : 'NO CONFIGURADA';
+		}
+
+		// Variables de OpenAI
+		envDiagnosis.openai.OPENAI_API_KEY = process.env.OPENAI_API_KEY ? 'CONFIGURADA' : 'NO CONFIGURADA';
+
+		// Variables de Firebase
+		for (const envVar of firebaseVars) {
+			const value = process.env[envVar];
+			envDiagnosis.firebase[envVar] = value ? 'CONFIGURADA' : 'NO CONFIGURADA';
+		}
+
+		// Variables adicionales
+		envDiagnosis.other.NODE_ENV = process.env.NODE_ENV || 'No configurado';
+		envDiagnosis.other.GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS || 'No configurado';
+
+		// Agregar el diagnóstico a la respuesta
+		errorResponse.environmentVariables = envDiagnosis;
+
 		// Responder con error detallado
 		res.status(500).json(errorResponse);
 	}
