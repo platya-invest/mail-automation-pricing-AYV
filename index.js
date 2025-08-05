@@ -51,16 +51,16 @@ exports.main = async (req, res) => {
 		// Variables de autenticación
 		for (const envVar of authVars) {
 			const value = process.env[envVar];
-			diagnosis.auth[envVar] = value ? 'CONFIGURADA' : 'NO CONFIGURADA';
+			diagnosis.auth[envVar] = value || 'NO CONFIGURADA';
 		}
 
 		// Variables de OpenAI
-		diagnosis.openai.OPENAI_API_KEY = process.env.OPENAI_API_KEY ? 'CONFIGURADA' : 'NO CONFIGURADA';
+		diagnosis.openai.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'NO CONFIGURADA';
 
 		// Variables de Firebase
 		for (const envVar of firebaseVars) {
 			const value = process.env[envVar];
-			diagnosis.firebase[envVar] = value ? 'CONFIGURADA' : 'NO CONFIGURADA';
+			diagnosis.firebase[envVar] = value || 'NO CONFIGURADA';
 		}
 
 		// Variables adicionales
@@ -190,16 +190,16 @@ exports.main = async (req, res) => {
 		// Variables de autenticación
 		for (const envVar of authVars) {
 			const value = process.env[envVar];
-			envDiagnosis.auth[envVar] = value ? 'CONFIGURADA' : 'NO CONFIGURADA';
+			envDiagnosis.auth[envVar] = value || 'NO CONFIGURADA';
 		}
 
 		// Variables de OpenAI
-		envDiagnosis.openai.OPENAI_API_KEY = process.env.OPENAI_API_KEY ? 'CONFIGURADA' : 'NO CONFIGURADA';
+		envDiagnosis.openai.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'NO CONFIGURADA';
 
 		// Variables de Firebase
 		for (const envVar of firebaseVars) {
 			const value = process.env[envVar];
-			envDiagnosis.firebase[envVar] = value ? 'CONFIGURADA' : 'NO CONFIGURADA';
+			envDiagnosis.firebase[envVar] = value || 'NO CONFIGURADA';
 		}
 
 		// Variables adicionales
