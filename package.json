@@ -2,7 +2,7 @@
   "name": "gmail-processor",
   "version": "1.0.0",
   "description": "Script para procesar emails de Gmail con OpenAI",
-  "main": "gmail-processor.js",
+  "main": "index.js",
   "dependencies": {
     "dotenv": "^16.4.5",
     "firebase-admin": "^12.7.0",
@@ -10,7 +10,7 @@
     "openai": "^4.104.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   },
   "author": "",
   "license": "ISC"

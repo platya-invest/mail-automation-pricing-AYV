@@ -1,0 +1,35 @@
+steps:
+  # Paso 1: Instalar dependencias
+  - name: 'node:20'
+    entrypoint: npm
+    args: ['ci']
+    dir: '.'
+
+  # Paso 2: Desplegar a Cloud Functions
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - functions
+      - deploy
+      - ${_FUNCTION_NAME}
+      - --gen2
+      - --runtime=nodejs20
+      - --region=${_REGION}
+      - --source=.
+      - --entry-point=main
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=512MB
+      - --timeout=540s
+      - --set-env-vars=NODE_ENV=${_NODE_ENV}
+      - --set-secrets=OPENAI_API_KEY=OPENAI_API_KEY_${_ENV_SUFFIX}:latest,DATABASE_ID=DATABASE_ID_${_ENV_SUFFIX}:latest,ACCESS_TOKEN_KEY=ACCESS_TOKEN_KEY_${_ENV_SUFFIX}:latest,REFRESH_TOKEN_KEY=REFRESH_TOKEN_KEY_${_ENV_SUFFIX}:latest,SCOPE_KEY=SCOPE_KEY_${_ENV_SUFFIX}:latest,TOKEN_TYPE_KEY=TOKEN_TYPE_KEY_${_ENV_SUFFIX}:latest,EXPIRY_DATE_KEY=EXPIRY_DATE_KEY_${_ENV_SUFFIX}:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID_${_ENV_SUFFIX}:latest,GOOGLE_PROJECT_ID=GOOGLE_PROJECT_ID_${_ENV_SUFFIX}:latest,GOOGLE_AUTH_URI=GOOGLE_AUTH_URI_${_ENV_SUFFIX}:latest,GOOGLE_TOKEN_URI=GOOGLE_TOKEN_URI_${_ENV_SUFFIX}:latest,GOOGLE_AUTH_PROVIDER_X509_CERT_URL=GOOGLE_AUTH_PROVIDER_X509_CERT_URL_${_ENV_SUFFIX}:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET_${_ENV_SUFFIX}:latest,GOOGLE_REDIRECT_URI=GOOGLE_REDIRECT_URI_${_ENV_SUFFIX}:latest,FIREBASE_TYPE=FIREBASE_TYPE_${_ENV_SUFFIX}:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID_${_ENV_SUFFIX}:latest,FIREBASE_PRIVATE_KEY_ID=FIREBASE_PRIVATE_KEY_ID_${_ENV_SUFFIX}:latest,FIREBASE_PRIVATE_KEY=FIREBASE_PRIVATE_KEY_${_ENV_SUFFIX}:latest,FIREBASE_CLIENT_EMAIL=FIREBASE_CLIENT_EMAIL_${_ENV_SUFFIX}:latest,FIREBASE_CLIENT_ID=FIREBASE_CLIENT_ID_${_ENV_SUFFIX}:latest,FIREBASE_AUTH_URI=FIREBASE_AUTH_URI_${_ENV_SUFFIX}:latest,FIREBASE_TOKEN_URI=FIREBASE_TOKEN_URI_${_ENV_SUFFIX}:latest,FIREBASE_AUTH_PROVIDER_X509_CERT_URL=FIREBASE_AUTH_PROVIDER_X509_CERT_URL_${_ENV_SUFFIX}:latest,FIREBASE_CLIENT_X509_CERT_URL=FIREBASE_CLIENT_X509_CERT_URL_${_ENV_SUFFIX}:latest,FIREBASE_UNIVERSE_DOMAIN=FIREBASE_UNIVERSE_DOMAIN_${_ENV_SUFFIX}:latest
+      - --project=${_PROJECT_ID}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+# Variables de sustitución que se configuran en los triggers
+# _PROJECT_ID: ID del proyecto de GCP
+# _FUNCTION_NAME: Nombre de la Cloud Function
+# _REGION: Región de GCP
+# _NODE_ENV: Entorno (qa o production)
+# _ENV_SUFFIX: Sufijo para los secrets (QA o PROD)
