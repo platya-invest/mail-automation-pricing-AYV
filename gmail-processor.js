@@ -16,6 +16,58 @@ class GmailProcessor {
   // Configure OAuth2 authentication
   async authenticate() {
     try {
+      console.log('🔍 === DIAGNÓSTICO DE VARIABLES DE ENTORNO ===');
+      console.log('📋 Variables de entorno disponibles:');
+      
+      // List all environment variables related to authentication
+      const authVars = [
+        'GOOGLE_CLIENT_ID',
+        'GOOGLE_CLIENT_SECRET', 
+        'GOOGLE_REDIRECT_URI',
+        'ACCESS_TOKEN_KEY',
+        'REFRESH_TOKEN_KEY',
+        'SCOPE_KEY',
+        'TOKEN_TYPE_KEY',
+        'EXPIRY_DATE_KEY'
+      ];
+
+      console.log('\n🔐 Variables de autenticación Gmail:');
+      for (const envVar of authVars) {
+        const value = process.env[envVar];
+        if (value) {
+          console.log(`✅ ${envVar}: ${value}`);
+        } else {
+          console.log(`❌ ${envVar}: NO CONFIGURADA`);
+        }
+      }
+
+      console.log('\n🤖 Variables de OpenAI:');
+      console.log(`OPENAI_API_KEY: ${process.env.OPENAI_API_KEY || 'NO CONFIGURADA'}`);
+
+      console.log('\n🔥 Variables de Firebase:');
+      const firebaseVars = [
+        'FIREBASE_PROJECT_ID',
+        'FIREBASE_PRIVATE_KEY_ID',
+        'FIREBASE_PRIVATE_KEY',
+        'FIREBASE_CLIENT_EMAIL',
+        'FIREBASE_CLIENT_ID'
+      ];
+      
+      for (const envVar of firebaseVars) {
+        const value = process.env[envVar];
+        if (value) {
+          console.log(`✅ ${envVar}: ${value}`);
+        } else {
+          console.log(`❌ ${envVar}: NO CONFIGURADA`);
+        }
+      }
+
+      console.log('\n📊 Variables adicionales:');
+      console.log(`NODE_ENV: ${process.env.NODE_ENV || 'No configurado'}`);
+      console.log(`GOOGLE_APPLICATION_CREDENTIALS: ${process.env.GOOGLE_APPLICATION_CREDENTIALS || 'No configurado'}`);
+      
+      console.log('🔍 === FIN DIAGNÓSTICO ===\n');
+
       // Verify that required environment variables are configured
       const requiredEnvVars = [
         'GOOGLE_CLIENT_ID',
@@ -25,10 +77,13 @@ class GmailProcessor {
         'REFRESH_TOKEN_KEY'
       ];
 
+      console.log('🔍 Verificando variables de entorno...');
       for (const envVar of requiredEnvVars) {
         if (!process.env[envVar]) {
+          console.error(`❌ Variable de entorno faltante: ${envVar}`);
           throw new Error(`Required environment variable not found: ${envVar}`);
         }
+        console.log(`✅ ${envVar}: ${process.env[envVar] ? 'Configurada' : 'No configurada'}`);
       }
 
       // Configure OAuth2 with environment variables
@@ -48,8 +103,8 @@ class GmailProcessor {
       const tokenCredentials = {
         access_token: cleanValue(process.env.ACCESS_TOKEN_KEY),
         refresh_token: cleanValue(process.env.REFRESH_TOKEN_KEY),
-        scope: cleanValue(process.env.SCOPE_KEY),
-        token_type: cleanValue(process.env.TOKEN_TYPE_KEY)
+        scope: cleanValue(process.env.SCOPE_KEY) || 'https://www.googleapis.com/auth/gmail.readonly',
+        token_type: cleanValue(process.env.TOKEN_TYPE_KEY) || 'Bearer'
       };
 
       // Add expiry_date if available
@@ -57,12 +112,33 @@ class GmailProcessor {
         tokenCredentials.expiry_date = parseInt(process.env.EXPIRY_DATE_KEY);
       }
 
+      console.log('🔧 Configurando credenciales OAuth2...');
+      console.log(`📅 Token expiry: ${tokenCredentials.expiry_date ? new Date(tokenCredentials.expiry_date).toISOString() : 'No configurado'}`);
+      
       this.auth.setCredentials(tokenCredentials);
 
+      // Test the authentication by making a simple API call
+      console.log('🧪 Probando autenticación con Gmail API...');
       this.gmail = google.gmail({ version: 'v1', auth: this.auth });
+      
+      // Make a test call to verify authentication
+      await this.gmail.users.getProfile({ userId: 'me' });
+      
       console.log('✅ Successful authentication with Gmail API using environment variables');
     } catch (error) {
       console.error('❌ Authentication error:', error.message);
+      
+      // Provide more detailed error information
+      if (error.message.includes('invalid_client')) {
+        console.error('🔍 Diagnóstico: Error invalid_client - Verificar:');
+        console.error('  1. GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET son correctos');
+        console.error('  2. Las credenciales OAuth2 están configuradas para la aplicación correcta');
+        console.error('  3. Los tokens no han expirado');
+      } else if (error.message.includes('invalid_grant')) {
+        console.error('🔍 Diagnóstico: Error invalid_grant - El refresh_token ha expirado');
+        console.error('  Necesitas generar nuevos tokens de autenticación');
+      }
+      
       throw error;
     }
   }
