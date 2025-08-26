@@ -4,10 +4,14 @@ class OpenAIProcessor {
   constructor() {
     this.openai = null;
     this.apiKeyConfigured = !!process.env.OPENAI_API_KEY;
+    this.openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
     
     if (this.apiKeyConfigured) {
       this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY
+        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: this.openaiBaseUrl,
+        timeout: Number(process.env.OPENAI_TIMEOUT_MS || 30000),
+        maxRetries: Number(process.env.OPENAI_MAX_RETRIES || 2)
       });
     }
   }
@@ -144,7 +148,22 @@ IMPORTANTE:
       return result;
 
     } catch (error) {
-      console.error('❌ Error processing with OpenAI:', error.message);
+      const errorDetails = {
+        name: error?.name,
+        message: error?.message,
+        status: error?.status,
+        code: error?.code,
+        type: error?.type,
+        cause: error?.cause && (error.cause.code || error.cause.errno || error.cause.message),
+        baseURL: this.openaiBaseUrl
+      };
+      try {
+        // Intenta incluir propiedades no enumerables del error
+        const serialized = JSON.stringify(error, Object.getOwnPropertyNames(error));
+        errorDetails.serialized = serialized;
+      } catch (_) {}
+      console.error('❌ Error processing with OpenAI:', error?.message || 'Unknown');
+      console.error('🔎 OpenAI error details:', errorDetails);
       
       // Return error result but don't fail completely
       return {
@@ -152,6 +171,37 @@ IMPORTANTE:
         error: error.message,
         archivo_original: attachment.filename
       };
+    }
+  }
+
+  // Simple connectivity test to OpenAI API from runtime
+  async testConnectivity() {
+    try {
+      this.verifyAPIKey();
+      const start = Date.now();
+      const models = await this.openai.models.list();
+      const elapsedMs = Date.now() - start;
+      return {
+        success: true,
+        endpoint: this.openaiBaseUrl,
+        elapsedMs,
+        modelsCount: Array.isArray(models?.data) ? models.data.length : undefined
+      };
+    } catch (error) {
+      const details = {
+        name: error?.name,
+        message: error?.message,
+        status: error?.status,
+        code: error?.code,
+        type: error?.type,
+        cause: error?.cause && (error.cause.code || error.cause.errno || error.cause.message),
+        endpoint: this.openaiBaseUrl
+      };
+      try {
+        const serialized = JSON.stringify(error, Object.getOwnPropertyNames(error));
+        details.serialized = serialized;
+      } catch (_) {}
+      return { success: false, error: 'OpenAI connectivity failed', details };
     }
   }
 }
