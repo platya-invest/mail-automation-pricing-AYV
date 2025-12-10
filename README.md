@@ -1,49 +1,55 @@
 # Gmail PDF Fund Processor
 
-This Node.js script automates the processing of fund price data from Gmail attachments. It reads emails with PDF attachments, extracts fund pricing information using OpenAI, and saves the data to Firebase Firestore.
+This Node.js script automates the processing of fund price and profitability data by consuming an external REST API, applying specific business rules, and saving the extracted information to Firebase Firestore.
 
 ## Features
 
-- 🔐 **Secure Authentication**: Uses environment variables for all credentials
-- 📧 **Gmail Integration**: Automatically fetches the latest emails with PDF attachments
-- 🤖 **AI-Powered Extraction**: Uses OpenAI to extract structured fund data from PDFs
-- 🔥 **Firebase Storage**: Saves data to Firestore with both historical records and current prices
-- 📊 **Comprehensive Logging**: Detailed console output for monitoring and debugging
+- Secure Authentication: Retrieves a JWT Bearer Token from the authentication endpoint.
+- Client Certificates (mTLS): Uses .crt and .key files to establish a secure, mutual TLS connection with the API.
+- REST API Integration: Fetches comprehensive fund profitability data (price units, various returns).
+- Business Logic Layer: Implements specific mapping rules for fund IDs (numeric to internal UUID) and conditional profitability formatting (e.g., Fund 43, Fund 50 rules).
+- Firebase Storage: Saves data to Firestore with both historical records and current prices, including profitability metrics.
+- Comprehensive Logging: Detailed console output for monitoring and debugging.
 
 ## Architecture
 
 ```
-Gmail → PDF Download → OpenAI Processing → Firebase Storage
-  ↓           ↓              ↓                 ↓
-Email API   Base64 PDF    Fund Data       priceUnits/
-                         Extraction       funds/
+External Auth API → JWT Bearer Token
+       ↓               ↓
+External Data API ← Client Certificates (mTLS)
+       ↓               ↓
+Fund Data (JSON) → Internal Mapping Layer (UUID, Business Rules)
+                   (api-processor.js)
+                         ↓
+                   Firebase Storage
 ```
 
 ## Data Flow
 
-1. **Email Processing**: Fetches the most recent email from Gmail
-2. **PDF Extraction**: Downloads and converts PDF attachments to base64
-3. **AI Analysis**: Uses OpenAI to extract fund data (idFund, date, price)
-4. **Firebase Storage**: 
+1. **API Consumption**: Calls the data endpoint (GetProfitabilityByFund) for configured funds, using mTLS and the JWT.
+2. **Data Processing & Mapping:**: Maps the API's numeric Fund ID to the internal UUID, Applies conditional logic (e.g., using rentabilidad180 for Fund 43, special status for Fund 50), and formats the profitability value as a percentage string (e.g., "19.76% E.A. Últimos 6 meses").
+3. **Firebase Storage**:
    - Saves historical data to `priceUnits/{idFund}/historical/{date}`
    - Updates current price in `funds/{idFund}.unit`
+   - Updates current profitability in `funds/{idFund}.targetIncome`
 
 ## Prerequisites
 
 - Node.js 16+
-- Gmail API credentials
-- OpenAI API key
+- AcVa API credentials and certificates
 - Firebase Admin SDK credentials
 - Firebase project with Firestore enabled
 
 ## Installation
 
 1. **Clone and install dependencies**:
+
 ```bash
 npm install
 ```
 
 2. **Create environment file**:
+
 ```bash
 cp .env.example .env
 ```
@@ -54,12 +60,19 @@ cp .env.example .env
 
 Create a `.env` file with the following variables:
 
-### OpenAI Configuration
+### AcVa API Configuration
+
 ```env
-OPENAI_API_KEY=sk-proj-your-openai-api-key
+API_BASE_URL=https://apifondosmpf.accivalores.com
+AUTH_PASSWORD=xxxxxxx
+AUTH_CODIGO_APP=xxxxxxx
+
+CLIENT_CERT_PATH=.../apifondosmpf.crt
+CLIENT_KEY_PATH=.../mpfinvest.key
 ```
 
 ### Firebase Configuration
+
 ```env
 DATABASE_ID=your-firestore-database-id
 FIREBASE_TYPE=service_account
@@ -75,47 +88,30 @@ FIREBASE_CLIENT_X509_CERT_URL=https://www.googleapis.com/robotics/metadata/x509/
 FIREBASE_UNIVERSE_DOMAIN=googleapis.com
 ```
 
-### Google OAuth2 Configuration
-```env
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_PROJECT_ID=your-google-project
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost
-
-# OAuth2 Tokens (generated after authentication)
-ACCESS_TOKEN_KEY=ya29.your-access-token
-REFRESH_TOKEN_KEY=1//your-refresh-token
-SCOPE_KEY=https://www.googleapis.com/auth/gmail.readonly
-TOKEN_TYPE_KEY=Bearer
-EXPIRY_DATE_KEY=1751583587486
-```
-
 ## Usage
 
 ### Run the Complete Process
+
 ```bash
-node run-gmail-processor.js
+node run-api-processor.js
 ```
 
 This will:
-1. Authenticate with Gmail
-2. Fetch the latest email with PDF attachments
-3. Process PDFs with OpenAI
-4. Save data to Firebase
+
+1. Fetch the Fund Data
+2. Process and mappind data
+3. Save data to Firebase
 
 ### Run Individual Components
 
-**Process Gmail only**:
-```bash
-node gmail-processor.js
-```
+**Process API only**:
 
-**Process with OpenAI only**:
 ```bash
-node openai-processor.js [pdf-file-path]
+node api-processor.js
 ```
 
 **Save to Firebase only**:
+
 ```bash
 node save-firebase.js
 ```
@@ -123,6 +119,7 @@ node save-firebase.js
 ## Firebase Data Structure
 
 ### Historical Data
+
 ```
 priceUnits/
 ├── {idFund}/
@@ -133,28 +130,33 @@ priceUnits/
 ```
 
 ### Current Prices
+
 ```
 funds/
 ├── {idFund}/
 │   ├── unit: 1234.56  (updated by script)
-│   └── ... (other fund fields)
+│   └── targetIncome (updated by script)
 ```
 
 ## Expected Data Format
 
-The script expects PDFs to contain fund data that OpenAI can extract in this format:
+The script expects to contain fund data in this format:
 
 ```json
 [
   {
     "idFund": "FUND001",
-    "date": "2024-01-15", 
-    "price": 1234.56
+    "date": "2024-01-15",
+    "price": 1234.56,
+    "targetIncome": 19.96,
+    "formattedTargetIncome": "19.96% E.A. Último año"
   },
   {
     "idFund": "FUND002",
     "date": "2024-01-15",
-    "price": 2345.67
+    "price": 2345.67,
+    "targetIncome": 7.96,
+    "formattedTargetIncome": "7.96% E.A. Último año"
   }
 ]
 ```
@@ -171,7 +173,7 @@ The script expects PDFs to contain fund data that OpenAI can extract in this for
 The script provides detailed logging:
 
 - 🔥 Firebase initialization
-- 📧 Gmail authentication and email processing  
+- 📧 Gmail authentication and email processing
 - 🤖 OpenAI PDF analysis
 - ✅ Successful data saves
 - ⚠️ Warnings for incomplete data
@@ -188,33 +190,23 @@ The script provides detailed logging:
 
 ### Common Issues
 
-**Invalid Grant Error**:
-- Check OAuth2 tokens for extra quotes or commas
-- Regenerate tokens if expired
-
 **Firebase Permission Error**:
+
 - Verify service account has Firestore write permissions
 - Check Firebase project ID matches configuration
-
-**OpenAI API Error**:
-- Verify API key is valid and has credits
-- Check PDF file size limits
-
-**Gmail API Error**:
-- Ensure Gmail API is enabled in Google Console
-- Check OAuth2 scopes include gmail.readonly
 
 ## Dependencies
 
 ```json
 {
+  "axios": "^1.13.2",
   "dotenv": "^16.4.5",
   "firebase-admin": "latest",
-  "googleapis": "latest", 
+  "googleapis": "latest",
   "openai": "latest"
 }
 ```
 
 ## License
 
-MIT License - See LICENSE file for details 
+MIT License - See LICENSE file for details
