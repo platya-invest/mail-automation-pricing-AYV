@@ -1,6 +1,6 @@
 require("dotenv").config();
 const axios = require("axios");
-const fs = require("fs");
+const https = require("https");
 
 const FUND_IDS = ["43", "1", "38", "39", "40", "50"];
 
@@ -30,10 +30,10 @@ class RestProcessor {
   }
 
   loadCertificates() {
-    const certPath = process.env.CLIENT_CERT_PATH;
-    const keyPath = process.env.CLIENT_KEY_PATH;
+    const certContent = process.env.CLIENT_CERT_CONTENT;
+    const keyContent = process.env.CLIENT_KEY_CONTENT;
 
-    if (!certPath || !keyPath) {
+    if (!certContent || !keyContent) {
       console.log(
         "ADVERTENCIA: Rutas de certificados de cliente (mTLS) no configuradas. Continuando sin SSL de cliente."
       );
@@ -42,9 +42,9 @@ class RestProcessor {
 
     try {
       this.clientConfig = {
-        httpsAgent: new (require("https").Agent)({
-          cert: fs.readFileSync(certPath),
-          key: fs.readFileSync(keyPath),
+        httpsAgent: new https.Agent({
+          cert: certContent,
+          key: keyContent,
         }),
       };
       console.log("Certificados de cliente (mTLS) cargados exitosamente.");
