@@ -35,7 +35,7 @@ class RestProcessor {
 
     if (!certContent || !keyContent) {
       console.log(
-        "ADVERTENCIA: Rutas de certificados de cliente (mTLS) no configuradas. Continuando sin SSL de cliente."
+        "ADVERTENCIA: Rutas de certificados de cliente (mTLS) no configuradas. Continuando sin SSL de cliente.",
       );
       return;
     }
@@ -51,7 +51,7 @@ class RestProcessor {
     } catch (error) {
       console.error(
         "ERROR: No se pudieron cargar los archivos de certificado. Verifique las rutas:",
-        error.message
+        error.message,
       );
       throw new Error("Fallo al cargar certificados SSL.");
     }
@@ -86,7 +86,7 @@ class RestProcessor {
     } catch (error) {
       console.error("Error fatal al obtener el Bearer Token:", error.message);
       throw new Error(
-        `Fallo la autenticación con la API. Revise credenciales y mTLS: ${error.message}`
+        `Fallo la autenticación con la API. Revise credenciales y mTLS: ${error.message}`,
       );
     }
   }
@@ -124,16 +124,11 @@ class RestProcessor {
       targetIncomeValue = apiData[rentabilityField];
       if (targetIncomeValue === undefined || targetIncomeValue === null) {
         console.warn(
-          `Campo de rentabilidad '${rentabilityField}' no encontrado en la respuesta para Fondo ${fundId}.`
+          `Campo de rentabilidad '${rentabilityField}' no encontrado en la respuesta para Fondo ${fundId}.`,
         );
         formattedTargetIncome = null;
       } else {
-        let labelSuffix;
-        if (fundId === "43") {
-          labelSuffix = "E.A. Últimos 6 meses";
-        } else {
-          labelSuffix = "E.A. Último año";
-        }
+        let labelSuffix = "E.A. Último año";
         formattedTargetIncome = `${targetIncomeValue}% ${labelSuffix}`;
       }
     }
@@ -191,10 +186,6 @@ class RestProcessor {
 
     for (const fundId of FUND_IDS) {
       let rentabilityField = DEFAULT_RENTABILITY_FIELD;
-
-      if (fundId === "43") {
-        rentabilityField = "rentabilidad180";
-      }
 
       const apiResult = await this.fetchFundData(fundId, date);
 
