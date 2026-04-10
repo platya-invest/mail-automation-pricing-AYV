@@ -69,7 +69,7 @@ class RestProcessor {
     const url = `${this.baseUrl}${this.authEndpoint}`;
     const payload = {
       password: this.authPassword,
-      codigo_App: this.authCodigoApp,
+      appCode: this.authCodigoApp,
     };
 
     try {
