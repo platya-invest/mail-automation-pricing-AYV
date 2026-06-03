@@ -2,7 +2,7 @@ require("dotenv").config();
 const axios = require("axios");
 const https = require("https");
 
-const FUND_IDS = ["43", "1", "38", "39", "40", "50", "51", "47"];
+const FUND_IDS = ["43", "1", "38", "39", "40", "50", "51", "47", "52"];
 
 const FUND_ID_MAP = {
   1: "6073f1cf-40df-4999-9df3-0072a673d8d9",
@@ -13,6 +13,7 @@ const FUND_ID_MAP = {
   50: "6073f1cf-40df-4999-9df3-0072a673d8d10",
   51: "6073f1cf-40df-4999-9df3-0072a673d9d1",
   47: "9865ca76-3bdc-1332-5453-9db811864b36",
+  52: "6073f1cf-40df-4999-9df3-0072a673d9d2",
 };
 
 const DEFAULT_RENTABILITY_FIELD = "rentabilidad365";
@@ -122,7 +123,7 @@ class RestProcessor {
 
     if (fundId === "47") {
       formattedTargetIncome = "8 a 10% E.A en USD";
-    } else if (fundId === "50" || fundId === "51") {
+    } else if (fundId === "50" || fundId === "51" || fundId === "52") {
       formattedTargetIncome = "Fondo nuevo";
     } else {
       targetIncomeValue = apiData[rentabilityField];
